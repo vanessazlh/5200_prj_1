@@ -1,0 +1,160 @@
+CREATE TABLE statements:
+
+CREATE TABLE "Author" (
+	"email"	TEXT,
+	"name"	TEXT,
+	PRIMARY KEY("email")
+);
+
+CREATE TABLE "Paper" (
+	"pid"	INTEGER,
+	"title"	TEXT NOT NULL,
+	"acceptance"	TEXT,
+	"area_name"	TEXT,
+	"avg_score" INTEGER,
+	PRIMARY KEY("pid"),
+	FOREIGN KEY("area_name") REFERENCES "Research_Areas"("area_name") ON DELETE CASCADE
+);
+
+CREATE TABLE "Research_Areas" (
+	"area_name"	TEXT,
+	PRIMARY KEY("area_name")
+);
+
+CREATE TABLE "Writes" (
+	"email"	TEXT NOT NULL,
+	"pid"	INTEGER NOT NULL,
+	PRIMARY KEY("email","pid"),
+	FOREIGN KEY("pid") REFERENCES "Paper"("pid") ON DELETE CASCADE
+);
+
+CREATE TABLE Expert_In (
+    email VARCHAR(255),
+    area_name VARCHAR(100),
+    PRIMARY KEY (email, area_name),
+    FOREIGN KEY (email) REFERENCES Author(email)  -- Changed from Authors to Author
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    FOREIGN KEY (area_name) REFERENCES Research_Areas(area_name)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+CREATE TABLE Reviews (
+    email VARCHAR(255),
+    pid INTEGER,
+    originality INTEGER NOT NULL CHECK (originality >= 0 AND originality <= 5),
+    correctness INTEGER NOT NULL CHECK (correctness >= 0 AND correctness <= 5),
+    fitness INTEGER NOT NULL CHECK (fitness >= 0 AND fitness <= 5),
+    PRIMARY KEY (email, pid),
+    FOREIGN KEY (email) REFERENCES Authors(email)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    FOREIGN KEY (pid) REFERENCES Papers(pid)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+
+
+
+INSERT statements
+
+INSERT INTO Author (email, name) VALUES
+('john.smith@university.edu', 'John Smith'),
+('jane.white@university.edu', 'Jane White'),
+('jane.white2@university.edu', 'Jane White'),
+('leo.martinez@institute.edu', 'Leo Martinez'),
+('maria.rodriguez@university.edu', 'Maria Rodriguez');
+
+
+INSERT INTO Research_Areas (area_name) VALUES
+('Artificial Intelligence'),
+('Database Systems'),
+('Computer Networks'),
+('Computer Security'),
+('Machine Learning'),
+('Software Engineering');
+
+
+INSERT INTO Paper(pid, title, area_name) VALUES
+(1, 'Efficient Routing Protocols', 'Computer Networks'),
+(2, 'Automated Testing Frameworks for Microservices', 'Software Engineering'),
+(3, 'Graph Databases for Social Network Analysis', 'Database Systems'),
+(4, 'Transformer Models for Computer Vision', 'Artificial Intelligence'),
+(5, 'Quantum Algorithms for Cryptographic Applications', 'Computer Security'),
+(6, 'Real-Time Data Streaming in Edge Computing Environments', 'Database Systems'),
+(7, 'Adaptive User Interfaces for Accessibility Enhancement', 'Artificial Intelligence');
+
+
+INSERT INTO Expert_In(email, area_name) VALUES
+('john.smith@university.edu', 'Software Engineering'),
+('jane.white@university.edu', 'Artificial Intelligence'),
+('jane.white@university.edu', 'Machine Learning');
+('jane.white2@university.edu', 'Machine Learning'),
+('leo.martinez@institute.edu', 'Software Engineering'),
+('maria.rodriguez@university.edu', 'Computer Security');
+
+INSERT INTO Reviews (email, pid, originality, correctness, fitness) VALUES
+('john.smith@university.edu', 2, 4, 3, 5),
+('jane.white2@university.edu', 2, 5, 4, 5),
+('jane.white2@university.edu', 4, 5, 4, 5);
+
+
+
+Views:
+
+
+
+Triggers:
+
+CREATE TRIGGER prevent_self_review
+BEFORE INSERT ON Reviews
+FOR EACH ROW
+WHEN EXISTS (
+    SELECT 1 FROM Writes 
+    WHERE email = NEW.email AND pid = NEW.pid
+)
+BEGIN
+    SELECT RAISE(ABORT, 'Authors cannot review their own papers');
+END;
+
+
+CREATE TRIGGER update_avg_on_review_insert
+AFTER INSERT ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET avg_review_score = (
+        SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
+        FROM Reviews
+        WHERE pid = NEW.pid
+    )
+    WHERE pid = NEW.pid;
+END;
+
+CREATE TRIGGER update_avg_on_review_update
+AFTER UPDATE ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET avg_review_score = (
+        SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
+        FROM Reviews
+        WHERE pid = NEW.pid
+    )
+    WHERE pid = NEW.pid;
+END;
+
+CREATE TRIGGER update_avg_on_review_delete
+AFTER DELETE ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET avg_review_score = (
+        SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
+        FROM Reviews
+        WHERE pid = OLD.pid
+    )
+    WHERE pid = OLD.pid;
+END;
