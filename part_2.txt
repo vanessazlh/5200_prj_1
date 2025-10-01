@@ -13,10 +13,10 @@ CREATE TABLE "Paper" (
 	"area_name"	TEXT,
 	"avg_score" INTEGER,
 	PRIMARY KEY("pid"),
-	FOREIGN KEY("area_name") REFERENCES "Research_Areas"("area_name") ON DELETE CASCADE
+	FOREIGN KEY("area_name") REFERENCES "Research_Area"("area_name") ON DELETE CASCADE
 );
 
-CREATE TABLE "Research_Areas" (
+CREATE TABLE "Research_Area" (
 	"area_name"	TEXT,
 	PRIMARY KEY("area_name")
 );
@@ -32,10 +32,10 @@ CREATE TABLE Expert_In (
     email VARCHAR(255),
     area_name VARCHAR(100),
     PRIMARY KEY (email, area_name),
-    FOREIGN KEY (email) REFERENCES Author(email)  -- Changed from Authors to Author
+    FOREIGN KEY (email) REFERENCES Author(email)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
-    FOREIGN KEY (area_name) REFERENCES Research_Areas(area_name)
+    FOREIGN KEY (area_name) REFERENCES Research_Area(area_name)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 );
@@ -47,10 +47,10 @@ CREATE TABLE Reviews (
     correctness INTEGER NOT NULL CHECK (correctness >= 0 AND correctness <= 5),
     fitness INTEGER NOT NULL CHECK (fitness >= 0 AND fitness <= 5),
     PRIMARY KEY (email, pid),
-    FOREIGN KEY (email) REFERENCES Authors(email)
+    FOREIGN KEY (email) REFERENCES Author(email)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
-    FOREIGN KEY (pid) REFERENCES Papers(pid)
+    FOREIGN KEY (pid) REFERENCES Paper(pid)
         ON DELETE CASCADE
         ON UPDATE CASCADE
 );
@@ -67,7 +67,7 @@ INSERT INTO Author (email, name) VALUES
 ('leo.martinez@institute.edu', 'Leo Martinez'),
 ('maria.rodriguez@university.edu', 'Maria Rodriguez');
 
-INSERT INTO Research_Areas (area_name) VALUES
+INSERT INTO Research_Area (area_name) VALUES
 ('Artificial Intelligence'),
 ('Database Systems'),
 ('Computer Networks'),
