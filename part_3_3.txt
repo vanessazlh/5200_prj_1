@@ -1,0 +1,13 @@
+SELECT 
+    r.area_name AS research_area,
+    SUM(CASE WHEN p.status = 'accepted' THEN 1 ELSE 0 END) AS accepted_count,
+    SUM(CASE WHEN p.status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count,
+    SUM(CASE WHEN p.status = 'undecided' THEN 1 ELSE 0 END) AS undecided_count
+FROM 
+    Papers p
+JOIN 
+    ResearchAreas r ON p.area_id = r.area_id
+GROUP BY 
+    r.area_name
+ORDER BY 
+    r.area_name;
