@@ -58,7 +58,7 @@ CREATE TABLE Reviews (
 
 
 
-INSERT statements
+INSERT statements:
 
 INSERT INTO Author (email, name) VALUES
 ('john.smith@university.edu', 'John Smith'),
@@ -67,7 +67,6 @@ INSERT INTO Author (email, name) VALUES
 ('leo.martinez@institute.edu', 'Leo Martinez'),
 ('maria.rodriguez@university.edu', 'Maria Rodriguez');
 
-
 INSERT INTO Research_Areas (area_name) VALUES
 ('Artificial Intelligence'),
 ('Database Systems'),
@@ -75,7 +74,6 @@ INSERT INTO Research_Areas (area_name) VALUES
 ('Computer Security'),
 ('Machine Learning'),
 ('Software Engineering');
-
 
 INSERT INTO Paper(pid, title, area_name) VALUES
 (1, 'Efficient Routing Protocols', 'Computer Networks'),
@@ -86,7 +84,6 @@ INSERT INTO Paper(pid, title, area_name) VALUES
 (6, 'Real-Time Data Streaming in Edge Computing Environments', 'Database Systems'),
 (7, 'Adaptive User Interfaces for Accessibility Enhancement', 'Artificial Intelligence');
 
-
 INSERT INTO Expert_In(email, area_name) VALUES
 ('john.smith@university.edu', 'Software Engineering'),
 ('jane.white@university.edu', 'Artificial Intelligence'),
@@ -96,9 +93,12 @@ INSERT INTO Expert_In(email, area_name) VALUES
 ('maria.rodriguez@university.edu', 'Computer Security');
 
 INSERT INTO Reviews (email, pid, originality, correctness, fitness) VALUES
-('john.smith@university.edu', 2, 4, 3, 5),
-('jane.white2@university.edu', 2, 5, 4, 5),
-('jane.white2@university.edu', 4, 5, 4, 5);
+('john.smith@university.edu', 1, 1, 1, 1),
+('jane.white@university.edu', 1, 4, 4, 5),
+('john.smith@university.edu', 2, 5, 5, 5),
+('leo.martinez@institute.edu', 1, 4, 5, 4),
+('jane.white2@university.edu', 1, 5, 5, 5),
+('maria.rodriguez@university.edu', 1, 4, 4, 5);
 
 
 
@@ -125,7 +125,7 @@ AFTER INSERT ON Reviews
 FOR EACH ROW
 BEGIN
     UPDATE Paper
-    SET avg_review_score = (
+    SET avg_score = (
         SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
         FROM Reviews
         WHERE pid = NEW.pid
@@ -138,7 +138,7 @@ AFTER UPDATE ON Reviews
 FOR EACH ROW
 BEGIN
     UPDATE Paper
-    SET avg_review_score = (
+    SET avg_score = (
         SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
         FROM Reviews
         WHERE pid = NEW.pid
@@ -151,7 +151,7 @@ AFTER DELETE ON Reviews
 FOR EACH ROW
 BEGIN
     UPDATE Paper
-    SET avg_review_score = (
+    SET avg_score = (
         SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
         FROM Reviews
         WHERE pid = OLD.pid
