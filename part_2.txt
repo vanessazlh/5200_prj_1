@@ -158,3 +158,60 @@ BEGIN
     )
     WHERE pid = OLD.pid;
 END;
+
+----Added By BISH--------
+CREATE TRIGGER update_acceptance_on_review_insert
+AFTER INSERT ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET acceptance = CASE
+        WHEN (SELECT COUNT(*) FROM Reviews WHERE pid = NEW.pid) >= 2 THEN
+            CASE 
+                WHEN (SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
+                      FROM Reviews WHERE pid = NEW.pid) >= 3.5
+                THEN 'accepted'
+                ELSE 'rejected'
+            END
+        ELSE 'undecided'
+    END
+    WHERE pid = NEW.pid;
+END;
+
+CREATE TRIGGER update_acceptance_on_review_update
+AFTER UPDATE ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET acceptance = CASE
+        WHEN (SELECT COUNT(*) FROM Reviews WHERE pid = NEW.pid) >= 2 THEN
+            CASE 
+                WHEN (SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
+                      FROM Reviews WHERE pid = NEW.pid) >= 3.5
+                THEN 'accepted'
+                ELSE 'rejected'
+            END
+        ELSE 'undecided'
+    END
+    WHERE pid = NEW.pid;
+END;
+
+
+CREATE TRIGGER update_acceptance_on_review_delete
+AFTER DELETE ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET acceptance = CASE
+        WHEN (SELECT COUNT(*) FROM Reviews WHERE pid = OLD.pid) >= 2 THEN
+            CASE 
+                WHEN (SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
+                      FROM Reviews WHERE pid = OLD.pid) >= 3.5
+                THEN 'accepted'
+                ELSE 'rejected'
+            END
+        ELSE 'undecided'
+    END
+    WHERE pid = OLD.pid;
+END;
+
