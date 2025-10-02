@@ -1,13 +1,11 @@
-SELECT 
-    p.area_name AS research_area,
-    SUM(CASE WHEN p.acceptance = 'accepted' THEN 1 ELSE 0 END) AS accepted_count,
-    SUM(CASE WHEN p.acceptance = 'rejected' THEN 1 ELSE 0 END) AS rejected_count,
-    SUM(CASE WHEN p.acceptance = 'undecided' THEN 1 ELSE 0 END) AS undecided_count
-FROM 
-    Paper p
-JOIN 
-    Research_Area r ON p.area_name = r.area_name
-GROUP BY 
-    r.area_name
-ORDER BY 
-    r.area_name;
+SELECT
+    area_name,
+    SUM(CASE WHEN acceptance = 'accepted' THEN 1 ELSE 0 END) AS accepted_papers,
+    SUM(CASE WHEN acceptance = 'rejected' THEN 1 ELSE 0 END) AS rejected_papers,
+    SUM(CASE WHEN acceptance = 'undecided' THEN 1 ELSE 0 END) AS undecided_papers
+FROM
+    Paper
+GROUP BY
+    area_name
+ORDER BY
+    area_name;
