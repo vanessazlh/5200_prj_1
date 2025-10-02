@@ -1,0 +1,14 @@
+-- 1. Trigger updates avg_score automatically
+-- 2. Update acceptance for papers with at least 2 reviews
+UPDATE Paper
+SET acceptance = CASE 
+    WHEN avg_score >= 3.5 THEN 'accepted'
+    WHEN avg_score < 3.5 THEN 'rejected'
+    ELSE 'undecided'
+END
+WHERE pid IN (
+    SELECT pid
+    FROM Reviews
+    GROUP BY pid
+    HAVING COUNT(*) >= 2
+);

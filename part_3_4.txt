@@ -1,8 +1,9 @@
-SELECT DISTINCT
-    r.email AS reviewer_email
+SELECT 
+    r.email as author_email,
+    r.pid,
+    ROUND((r.originality + r.correctness + r.fitness) / 3.0, 2) as reviewer_avg_score,
+    p.avg_score as paper_avg_score
 FROM Reviews r
 JOIN Paper p ON r.pid = p.pid
-WHERE
-    p.avg_score > 0 -- Add this to prevent division-by-zero errors
-    AND
-    ABS((r.originality + r.correctness + r.fitness) / 3.0 - p.avg_score) / p.avg_score > 0.33;
+WHERE ABS((r.originality + r.correctness + r.fitness) / 3.0 - p.avg_score) / p.avg_score > 0.33
+ORDER BY r.pid;

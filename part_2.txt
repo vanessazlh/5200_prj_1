@@ -1,14 +1,4 @@
 -- #############################################################################
--- # Project #1: Conference Paper Management System
--- # File: schema_and_data.txt
--- # Description: This script contains all DDL (CREATE TABLE) and DML (INSERT)
--- #              statements, along with triggers, to build and populate the
--- #              database. The data is specifically designed to test all
--- #              queries required in Part 3.
--- #############################################################################
-
-
--- #############################################################################
 -- # Section 0: Clean Slate
 -- # Drop tables in reverse order of dependency to ensure the script is re-runnable.
 -- #############################################################################
@@ -37,9 +27,10 @@ CREATE TABLE "Research_Area" (
 CREATE TABLE "Paper" (
     "pid"        INTEGER PRIMARY KEY,
     "title"      TEXT NOT NULL,
-    "acceptance" TEXT DEFAULT 'undecided', -- Default status as per project requirements.
-    "area_name"  TEXT,
-    "avg_score"  REAL DEFAULT NULL,        -- REAL is used for fractional average scores.
+    "acceptance" TEXT DEFAULT 'undecided' 
+        CHECK (acceptance IN ('accepted', 'rejected', 'undecided')),
+    "area_name"  TEXT NOT NULL,
+    "avg_score"  REAL DEFAULT NULL,
     FOREIGN KEY("area_name") REFERENCES "Research_Area"("area_name") ON DELETE CASCADE
 );
 
@@ -52,8 +43,8 @@ CREATE TABLE "Writes" (
 );
 
 CREATE TABLE "Expert_In" (
-    "email"     TEXT,
-    "area_name" TEXT,
+    "email"     TEXT NOT NULL,
+    "area_name" TEXT NOT NULL,
     PRIMARY KEY ("email", "area_name"),
     FOREIGN KEY ("email") REFERENCES "Author"("email") ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY ("area_name") REFERENCES "Research_Area"("area_name") ON DELETE CASCADE ON UPDATE CASCADE
@@ -74,7 +65,6 @@ CREATE TABLE "Reviews" (
 -- #############################################################################
 -- # Section 2: Triggers for Automation
 -- #############################################################################
-
 -- Trigger to prevent an author from reviewing their own paper.
 CREATE TRIGGER prevent_self_review
 BEFORE INSERT ON Reviews
@@ -95,6 +85,19 @@ BEGIN
     UPDATE Paper
     SET avg_score = (
         SELECT AVG((originality + correctness + fitness) / 3.0)
+        FROM Reviews
+        WHERE pid = NEW.pid
+    )
+    WHERE pid = NEW.pid;
+END;
+
+CREATE TRIGGER update_avg_on_review_update
+AFTER UPDATE ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET avg_score = (
+        SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
         FROM Reviews
         WHERE pid = NEW.pid
     )
@@ -132,6 +135,24 @@ BEGIN
     WHERE pid = NEW.pid;
 END;
 
+CREATE TRIGGER update_acceptance_on_review_update
+AFTER UPDATE ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET acceptance = CASE
+        WHEN (SELECT COUNT(*) FROM Reviews WHERE pid = NEW.pid) >= 2 THEN
+            CASE
+                WHEN (SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2) 
+                      FROM Reviews WHERE pid = NEW.pid) >= 3.5
+                THEN 'accepted'
+                ELSE 'rejected'
+            END
+        ELSE 'undecided'
+    END
+    WHERE pid = NEW.pid;
+END;
+
 CREATE TRIGGER update_acceptance_on_review_delete
 AFTER DELETE ON Reviews
 FOR EACH ROW
@@ -150,6 +171,7 @@ BEGIN
 END;
 
 
+
 -- #############################################################################
 -- # Section 3: Data Population (INSERT Statements)
 -- #############################################################################
@@ -161,6 +183,7 @@ INSERT INTO Author (email, name) VALUES
 ('leo.martinez@institute.edu', 'Leo Martinez'),
 ('maria.rodriguez@university.edu', 'Maria Rodriguez');
 
+
 INSERT INTO Research_Area (area_name) VALUES
 ('Artificial Intelligence'),
 ('Database Systems'),
@@ -169,7 +192,8 @@ INSERT INTO Research_Area (area_name) VALUES
 ('Machine Learning'),
 ('Software Engineering');
 
-INSERT INTO Paper (pid, title, area_name) VALUES
+
+INSERT INTO Paper(pid, title, area_name) VALUES
 (1, 'Efficient Routing Protocols', 'Computer Networks'),
 (2, 'Automated Testing Frameworks for Microservices', 'Software Engineering'),
 (3, 'Graph Databases for Social Network Analysis', 'Database Systems'),
@@ -179,7 +203,7 @@ INSERT INTO Paper (pid, title, area_name) VALUES
 (7, 'Adaptive User Interfaces for Accessibility Enhancement', 'Artificial Intelligence');
 
 INSERT INTO Writes (email, pid) VALUES
-('john.smith@university.edu', 1), -- John wrote paper 1
+('john.smith@university.edu', 1),
 ('jane.white@university.edu', 2),
 ('leo.martinez@institute.edu', 3),
 ('maria.rodriguez@university.edu', 4),
@@ -187,7 +211,8 @@ INSERT INTO Writes (email, pid) VALUES
 ('john.smith@university.edu', 6),
 ('jane.white@university.edu', 7);
 
-INSERT INTO Expert_In (email, area_name) VALUES
+
+INSERT INTO Expert_In(email, area_name) VALUES
 ('john.smith@university.edu', 'Software Engineering'),
 ('jane.white@university.edu', 'Artificial Intelligence'),
 ('jane.white@university.edu', 'Machine Learning'),
@@ -195,22 +220,23 @@ INSERT INTO Expert_In (email, area_name) VALUES
 ('leo.martinez@institute.edu', 'Software Engineering'),
 ('maria.rodriguez@university.edu', 'Computer Security');
 
--- Meaningful sample data for the Reviews table to cover all test cases in Part 3.
 INSERT INTO Reviews (email, pid, originality, correctness, fitness) VALUES
--- Paper 1: Designed to have inconsistent reviews and result in a 'rejected' status.
--- Final avg = (4.33 + 4.33 + 1.0) / 3 = 3.22, which is < 3.5.
-('leo.martinez@institute.edu', 1, 4, 5, 4),
-('maria.rodriguez@university.edu', 1, 4, 4, 5),
-('jane.white@university.edu', 1, 1, 1, 1),
+-- Paper 1 and 3 : Designed to result in a 'rejected' status.
+-- Paper 2 and 4: Designed to result in an 'accepted' status.
+-- The rest papers are designed to result in 'undecided' status.
+-- Jane White: Designed to be flagged for inconsistent review.
 
--- Paper 2: Designed to have two good reviews and result in an 'accepted' status.
--- Final avg = (5.0 + 4.0) / 2 = 4.5, which is >= 3.5.
+('jane.white2@university.edu', 2, 5, 4, 5),
+('leo.martinez@institute.edu', 4, 4, 4, 4),
+('jane.white2@university.edu', 4, 5, 4, 5),
+('jane.white2@university.edu', 1, 5, 5, 5),
+('leo.martinez@institute.edu', 1, 5, 5, 5),
+('maria.rodriguez@university.edu', 1, 5, 5, 5),
+('jane.white@university.edu', 1, 1, 1, 1),
 ('john.smith@university.edu', 2, 5, 5, 5),
 ('maria.rodriguez@university.edu', 2, 4, 4, 4),
-
--- Paper 3: Designed to have two poor reviews and result in a 'rejected' status.
--- Final avg = (1.67 + 2.0) / 2 = 1.835, which is < 3.5.
 ('jane.white@university.edu', 3, 2, 1, 2),
 ('john.smith@university.edu', 3, 1, 2, 3);
 
--- Papers 4, 5, 6, and 7 are intentionally left without reviews to test the 'undecided' status.
+
+
