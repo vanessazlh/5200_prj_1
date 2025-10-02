@@ -1,145 +1,78 @@
-CREATE TABLE statements:
-
 CREATE TABLE "Author" (
-	"email"	TEXT,
-	"name"	TEXT,
-	PRIMARY KEY("email")
+    "email" TEXT PRIMARY KEY,
+    "name"  TEXT NOT NULL
+);
+
+CREATE TABLE "Research_Area" (
+    "area_name" TEXT PRIMARY KEY
 );
 
 CREATE TABLE "Paper" (
-	"pid"	INTEGER,
-	"title"	TEXT NOT NULL,
-	"acceptance"	TEXT,
-	"area_name"	TEXT,
-	"avg_score" INTEGER,
-	PRIMARY KEY("pid"),
-	FOREIGN KEY("area_name") REFERENCES "Research_Areas"("area_name") ON DELETE CASCADE
-);
-
-CREATE TABLE "Research_Areas" (
-	"area_name"	TEXT,
-	PRIMARY KEY("area_name")
+    "pid"        INTEGER PRIMARY KEY,
+    "title"      TEXT NOT NULL,
+    "acceptance" TEXT DEFAULT 'undecided' 
+        CHECK (acceptance IN ('accepted', 'rejected', 'undecided')), -- Default status as per project requirements.
+    "area_name"  TEXT NOT NULL,  -- Papers must be assigned to one specific research area.
+    "avg_score"  REAL DEFAULT NULL,        -- REAL is used for fractional average scores.
+    FOREIGN KEY("area_name") REFERENCES "Research_Area"("area_name") ON DELETE CASCADE
 );
 
 CREATE TABLE "Writes" (
-	"email"	TEXT NOT NULL,
-	"pid"	INTEGER NOT NULL,
-	PRIMARY KEY("email","pid"),
-	FOREIGN KEY("pid") REFERENCES "Paper"("pid") ON DELETE CASCADE
+    "email" TEXT NOT NULL,
+    "pid"   INTEGER NOT NULL,
+    PRIMARY KEY("email", "pid"),
+    FOREIGN KEY("email") REFERENCES "Author"("email") ON DELETE CASCADE,
+    FOREIGN KEY("pid") REFERENCES "Paper"("pid") ON DELETE CASCADE
 );
 
-CREATE TABLE Expert_In (
-    email VARCHAR(255),
-    area_name VARCHAR(100),
-    PRIMARY KEY (email, area_name),
-    FOREIGN KEY (email) REFERENCES Author(email)  -- Changed from Authors to Author
-        ON DELETE CASCADE
-        ON UPDATE CASCADE,
-    FOREIGN KEY (area_name) REFERENCES Research_Areas(area_name)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE
+CREATE TABLE "Expert_In" (
+    "email"     TEXT,
+    "area_name" TEXT,
+    PRIMARY KEY ("email", "area_name"),
+    FOREIGN KEY ("email") REFERENCES "Author"("email") ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY ("area_name") REFERENCES "Research_Area"("area_name") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE Reviews (
-    email VARCHAR(255),
-    pid INTEGER,
-    originality INTEGER NOT NULL CHECK (originality >= 0 AND originality <= 5),
-    correctness INTEGER NOT NULL CHECK (correctness >= 0 AND correctness <= 5),
-    fitness INTEGER NOT NULL CHECK (fitness >= 0 AND fitness <= 5),
-    PRIMARY KEY (email, pid),
-    FOREIGN KEY (email) REFERENCES Authors(email)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE,
-    FOREIGN KEY (pid) REFERENCES Papers(pid)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE
+CREATE TABLE "Reviews" (
+    "email"       TEXT,
+    "pid"         INTEGER,
+    "originality" INTEGER NOT NULL CHECK (originality BETWEEN 0 AND 5),
+    "correctness" INTEGER NOT NULL CHECK (correctness BETWEEN 0 AND 5),
+    "fitness"     INTEGER NOT NULL CHECK (fitness BETWEEN 0 AND 5),
+    PRIMARY KEY ("email", "pid"),
+    FOREIGN KEY ("email") REFERENCES "Author"("email") ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY ("pid") REFERENCES "Paper"("pid") ON DELETE CASCADE ON UPDATE CASCADE
 );
-
-
-
-
-INSERT statements
-
-INSERT INTO Author (email, name) VALUES
-('john.smith@university.edu', 'John Smith'),
-('jane.white@university.edu', 'Jane White'),
-('jane.white2@university.edu', 'Jane White'),
-('leo.martinez@institute.edu', 'Leo Martinez'),
-('maria.rodriguez@university.edu', 'Maria Rodriguez');
-
-
-INSERT INTO Research_Areas (area_name) VALUES
-('Artificial Intelligence'),
-('Database Systems'),
-('Computer Networks'),
-('Computer Security'),
-('Machine Learning'),
-('Software Engineering');
-
-
-INSERT INTO Paper(pid, title, area_name) VALUES
-(1, 'Efficient Routing Protocols', 'Computer Networks'),
-(2, 'Automated Testing Frameworks for Microservices', 'Software Engineering'),
-(3, 'Graph Databases for Social Network Analysis', 'Database Systems'),
-(4, 'Transformer Models for Computer Vision', 'Artificial Intelligence'),
-(5, 'Quantum Algorithms for Cryptographic Applications', 'Computer Security'),
-(6, 'Real-Time Data Streaming in Edge Computing Environments', 'Database Systems'),
-(7, 'Adaptive User Interfaces for Accessibility Enhancement', 'Artificial Intelligence');
-
-
-INSERT INTO Expert_In(email, area_name) VALUES
-('john.smith@university.edu', 'Software Engineering'),
-('jane.white@university.edu', 'Artificial Intelligence'),
-('jane.white@university.edu', 'Machine Learning');
-('jane.white2@university.edu', 'Machine Learning'),
-('leo.martinez@institute.edu', 'Software Engineering'),
-('maria.rodriguez@university.edu', 'Computer Security');
-
-INSERT INTO Reviews (email, pid, originality, correctness, fitness) VALUES
-('john.smith@university.edu', 2, 4, 3, 5),
-('jane.white2@university.edu', 2, 5, 4, 5),
-('jane.white2@university.edu', 4, 5, 4, 5);
-
-
-
-Views:
-
-
-
-Triggers:
 
 CREATE TRIGGER prevent_self_review
 BEFORE INSERT ON Reviews
 FOR EACH ROW
 WHEN EXISTS (
-    SELECT 1 FROM Writes 
+    SELECT 1 FROM Writes
     WHERE email = NEW.email AND pid = NEW.pid
 )
 BEGIN
     SELECT RAISE(ABORT, 'Authors cannot review their own papers');
 END;
 
+CREATE TRIGGER prevent_self_review_on_writes_insert
+BEFORE INSERT ON Writes
+FOR EACH ROW
+WHEN EXISTS (
+    SELECT 1 FROM Reviews
+    WHERE email = NEW.email AND pid = NEW.pid
+)
+BEGIN
+    SELECT RAISE(ABORT, 'Cannot add author who has already reviewed this paper');
+END;
 
 CREATE TRIGGER update_avg_on_review_insert
 AFTER INSERT ON Reviews
 FOR EACH ROW
 BEGIN
     UPDATE Paper
-    SET avg_review_score = (
-        SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
-        FROM Reviews
-        WHERE pid = NEW.pid
-    )
-    WHERE pid = NEW.pid;
-END;
-
-CREATE TRIGGER update_avg_on_review_update
-AFTER UPDATE ON Reviews
-FOR EACH ROW
-BEGIN
-    UPDATE Paper
-    SET avg_review_score = (
-        SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
+    SET avg_score = (
+        SELECT AVG((originality + correctness + fitness) / 3.0)
         FROM Reviews
         WHERE pid = NEW.pid
     )
@@ -151,10 +84,125 @@ AFTER DELETE ON Reviews
 FOR EACH ROW
 BEGIN
     UPDATE Paper
-    SET avg_review_score = (
-        SELECT ROUND(AVG((originality + correctness + fitness) / 3.0), 2)
+    SET avg_score = (
+        SELECT AVG((originality + correctness + fitness) / 3.0)
         FROM Reviews
         WHERE pid = OLD.pid
     )
     WHERE pid = OLD.pid;
 END;
+
+CREATE TRIGGER update_acceptance_on_review_insert
+AFTER INSERT ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET acceptance = CASE
+        WHEN (SELECT COUNT(*) FROM Reviews WHERE pid = NEW.pid) >= 2 THEN
+            CASE
+                WHEN (SELECT AVG((originality + correctness + fitness) / 3.0) FROM Reviews WHERE pid = NEW.pid) >= 3.5
+                THEN 'accepted'
+                ELSE 'rejected'
+            END
+        ELSE 'undecided'
+    END
+    WHERE pid = NEW.pid;
+END;
+
+CREATE TRIGGER update_avg_on_review_update
+AFTER UPDATE ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET avg_score = (
+        SELECT AVG((originality + correctness + fitness) / 3.0)
+        FROM Reviews
+        WHERE pid = NEW.pid
+    )
+    WHERE pid = NEW.pid;
+END;
+
+CREATE TRIGGER update_acceptance_on_review_update
+AFTER UPDATE ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET acceptance = CASE
+        WHEN (SELECT COUNT(*) FROM Reviews WHERE pid = NEW.pid) >= 2 THEN
+            CASE
+                WHEN (SELECT AVG((originality + correctness + fitness) / 3.0) FROM Reviews WHERE pid = NEW.pid) >= 3.5
+                THEN 'accepted'
+                ELSE 'rejected'
+            END
+        ELSE 'undecided'
+    END
+    WHERE pid = NEW.pid;
+END;
+
+CREATE TRIGGER update_acceptance_on_review_delete
+AFTER DELETE ON Reviews
+FOR EACH ROW
+BEGIN
+    UPDATE Paper
+    SET acceptance = CASE
+        WHEN (SELECT COUNT(*) FROM Reviews WHERE pid = OLD.pid) >= 2 THEN
+            CASE
+                WHEN (SELECT AVG((originality + correctness + fitness) / 3.0) FROM Reviews WHERE pid = OLD.pid) >= 3.5
+                THEN 'accepted'
+                ELSE 'rejected'
+            END
+        ELSE 'undecided'
+    END
+    WHERE pid = OLD.pid;
+END;
+
+INSERT INTO Author (email, name) VALUES
+('john.smith@university.edu', 'John Smith'),
+('jane.white@university.edu', 'Jane White'),
+('jane.white2@university.edu', 'Jane White'),
+('leo.martinez@institute.edu', 'Leo Martinez'),
+('maria.rodriguez@university.edu', 'Maria Rodriguez');
+
+INSERT INTO Research_Area (area_name) VALUES
+('Artificial Intelligence'),
+('Database Systems'),
+('Computer Networks'),
+('Computer Security'),
+('Machine Learning'),
+('Software Engineering');
+
+INSERT INTO Paper (pid, title, area_name) VALUES
+(1, 'Efficient Routing Protocols', 'Computer Networks'),
+(2, 'Automated Testing Frameworks for Microservices', 'Software Engineering'),
+(3, 'Graph Databases for Social Network Analysis', 'Database Systems'),
+(4, 'Transformer Models for Computer Vision', 'Artificial Intelligence'),
+(5, 'Quantum Algorithms for Cryptographic Applications', 'Computer Security'),
+(6, 'Real-Time Data Streaming in Edge Computing Environments', 'Database Systems'),
+(7, 'Adaptive User Interfaces for Accessibility Enhancement', 'Artificial Intelligence');
+
+INSERT INTO Writes (email, pid) VALUES
+('john.smith@university.edu', 1),
+('jane.white@university.edu', 2),
+('maria.rodriguez@university.edu', 2),
+('leo.martinez@institute.edu', 3),
+('maria.rodriguez@university.edu', 4),
+('jane.white2@university.edu', 5),
+('john.smith@university.edu', 6),
+('jane.white@university.edu', 6),
+('jane.white@university.edu', 7); 
+
+INSERT INTO Expert_In (email, area_name) VALUES
+('john.smith@university.edu', 'Software Engineering'),
+('jane.white@university.edu', 'Artificial Intelligence'),
+('jane.white@university.edu', 'Machine Learning'),
+('jane.white2@university.edu', 'Machine Learning'),
+('leo.martinez@institute.edu', 'Software Engineering'),
+('maria.rodriguez@university.edu', 'Computer Security');
+
+--------
+INSERT INTO Reviews (email, pid, originality, correctness, fitness) VALUES
+-- Paper 1: Designed to have inconsistent reviews and result in a 'rejected' status.
+-- Final avg = (4.33 + 4.33 + 1.0) / 3 = 3.22, which is < 3.5.
+('leo.martinez@institute.edu', 1, 4, 5, 4),
+('maria.rodriguez@university.edu', 1, 4, 4, 5),
+('jane.white@university.edu', 1, 1, 1, 1);
