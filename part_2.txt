@@ -1,4 +1,18 @@
--- Drop tables in reverse order of dependency to ensure a clean slate
+-- #############################################################################
+-- # Project #1: Conference Paper Management System
+-- # File: schema_and_data.txt
+-- # Description: This script contains all DDL (CREATE TABLE) and DML (INSERT)
+-- #              statements, along with triggers, to build and populate the
+-- #              database. The data is specifically designed to test all
+-- #              queries required in Part 3.
+-- #############################################################################
+
+
+-- #############################################################################
+-- # Section 0: Clean Slate
+-- # Drop tables in reverse order of dependency to ensure the script is re-runnable.
+-- #############################################################################
+
 DROP TABLE IF EXISTS Reviews;
 DROP TABLE IF EXISTS Expert_In;
 DROP TABLE IF EXISTS Writes;
@@ -6,63 +20,62 @@ DROP TABLE IF EXISTS Paper;
 DROP TABLE IF EXISTS Author;
 DROP TABLE IF EXISTS Research_Area;
 
--- ####################################################################
--- 1. CORRECTED CREATE TABLE Statements
--- ####################################################################
+
+-- #############################################################################
+-- # Section 1: Schema Definition (CREATE TABLE Statements)
+-- #############################################################################
 
 CREATE TABLE "Author" (
-	"email"	TEXT PRIMARY KEY,
-	"name"	TEXT NOT NULL
+    "email" TEXT PRIMARY KEY,
+    "name"  TEXT NOT NULL
 );
 
 CREATE TABLE "Research_Area" (
-	"area_name"	TEXT PRIMARY KEY
+    "area_name" TEXT PRIMARY KEY
 );
 
--- MODIFICATION:
---   - Added `DEFAULT 'undecided'` for the acceptance column. This is more efficient
---     than using a trigger for a simple default value.
---   - Set the default for avg_score to NULL explicitly for clarity.
 CREATE TABLE "Paper" (
-	"pid"	INTEGER PRIMARY KEY,
-	"title"	TEXT NOT NULL,
-	"acceptance"	TEXT DEFAULT 'undecided',
-	"area_name"	TEXT,
-	"avg_score" REAL DEFAULT NULL, -- Use REAL for averages, not INTEGER
-	FOREIGN KEY("area_name") REFERENCES "Research_Area"("area_name") ON DELETE CASCADE
+    "pid"        INTEGER PRIMARY KEY,
+    "title"      TEXT NOT NULL,
+    "acceptance" TEXT DEFAULT 'undecided', -- Default status as per project requirements.
+    "area_name"  TEXT,
+    "avg_score"  REAL DEFAULT NULL,        -- REAL is used for fractional average scores.
+    FOREIGN KEY("area_name") REFERENCES "Research_Area"("area_name") ON DELETE CASCADE
 );
 
 CREATE TABLE "Writes" (
-	"email"	TEXT NOT NULL,
-	"pid"	INTEGER NOT NULL,
-	PRIMARY KEY("email","pid"),
+    "email" TEXT NOT NULL,
+    "pid"   INTEGER NOT NULL,
+    PRIMARY KEY("email", "pid"),
     FOREIGN KEY("email") REFERENCES "Author"("email") ON DELETE CASCADE,
-	FOREIGN KEY("pid") REFERENCES "Paper"("pid") ON DELETE CASCADE
+    FOREIGN KEY("pid") REFERENCES "Paper"("pid") ON DELETE CASCADE
 );
 
-CREATE TABLE Expert_In (
-    "email" TEXT,
+CREATE TABLE "Expert_In" (
+    "email"     TEXT,
     "area_name" TEXT,
-    PRIMARY KEY (email, area_name),
-    FOREIGN KEY (email) REFERENCES Author(email) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (area_name) REFERENCES Research_Area(area_name) ON DELETE CASCADE ON UPDATE CASCADE
+    PRIMARY KEY ("email", "area_name"),
+    FOREIGN KEY ("email") REFERENCES "Author"("email") ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY ("area_name") REFERENCES "Research_Area"("area_name") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE Reviews (
-    "email" TEXT,
-    "pid" INTEGER,
+CREATE TABLE "Reviews" (
+    "email"       TEXT,
+    "pid"         INTEGER,
     "originality" INTEGER NOT NULL CHECK (originality BETWEEN 0 AND 5),
     "correctness" INTEGER NOT NULL CHECK (correctness BETWEEN 0 AND 5),
-    "fitness" INTEGER NOT NULL CHECK (fitness BETWEEN 0 AND 5),
-    PRIMARY KEY (email, pid),
-    FOREIGN KEY (email) REFERENCES Author(email) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (pid) REFERENCES Paper(pid) ON DELETE CASCADE ON UPDATE CASCADE
+    "fitness"     INTEGER NOT NULL CHECK (fitness BETWEEN 0 AND 5),
+    PRIMARY KEY ("email", "pid"),
+    FOREIGN KEY ("email") REFERENCES "Author"("email") ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY ("pid") REFERENCES "Paper"("pid") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- ####################################################################
--- 2. TRIGGERS 
--- ####################################################################
 
+-- #############################################################################
+-- # Section 2: Triggers for Automation
+-- #############################################################################
+
+-- Trigger to prevent an author from reviewing their own paper.
 CREATE TRIGGER prevent_self_review
 BEFORE INSERT ON Reviews
 FOR EACH ROW
@@ -74,7 +87,7 @@ BEGIN
     SELECT RAISE(ABORT, 'Authors cannot review their own papers');
 END;
 
--- This set of triggers updates the average score whenever a review is changed
+-- Triggers to automatically update the average score in the Paper table.
 CREATE TRIGGER update_avg_on_review_insert
 AFTER INSERT ON Reviews
 FOR EACH ROW
@@ -101,8 +114,7 @@ BEGIN
     WHERE pid = OLD.pid;
 END;
 
-
--- This set of triggers updates the acceptance status whenever a review is changed
+-- Triggers to automatically update the acceptance status based on review count and average score.
 CREATE TRIGGER update_acceptance_on_review_insert
 AFTER INSERT ON Reviews
 FOR EACH ROW
@@ -138,9 +150,9 @@ BEGIN
 END;
 
 
--- ####################################################################
--- 3. INSERT STATEMENTS (With corrected data)
--- ####################################################################
+-- #############################################################################
+-- # Section 3: Data Population (INSERT Statements)
+-- #############################################################################
 
 INSERT INTO Author (email, name) VALUES
 ('john.smith@university.edu', 'John Smith'),
@@ -157,7 +169,7 @@ INSERT INTO Research_Area (area_name) VALUES
 ('Machine Learning'),
 ('Software Engineering');
 
-INSERT INTO Paper(pid, title, area_name) VALUES
+INSERT INTO Paper (pid, title, area_name) VALUES
 (1, 'Efficient Routing Protocols', 'Computer Networks'),
 (2, 'Automated Testing Frameworks for Microservices', 'Software Engineering'),
 (3, 'Graph Databases for Social Network Analysis', 'Database Systems'),
@@ -167,7 +179,7 @@ INSERT INTO Paper(pid, title, area_name) VALUES
 (7, 'Adaptive User Interfaces for Accessibility Enhancement', 'Artificial Intelligence');
 
 INSERT INTO Writes (email, pid) VALUES
-('john.smith@university.edu', 1),  -- John wrote paper 1
+('john.smith@university.edu', 1), -- John wrote paper 1
 ('jane.white@university.edu', 2),
 ('leo.martinez@institute.edu', 3),
 ('maria.rodriguez@university.edu', 4),
@@ -175,7 +187,7 @@ INSERT INTO Writes (email, pid) VALUES
 ('john.smith@university.edu', 6),
 ('jane.white@university.edu', 7);
 
-INSERT INTO Expert_In(email, area_name) VALUES
+INSERT INTO Expert_In (email, area_name) VALUES
 ('john.smith@university.edu', 'Software Engineering'),
 ('jane.white@university.edu', 'Artificial Intelligence'),
 ('jane.white@university.edu', 'Machine Learning'),
@@ -183,23 +195,22 @@ INSERT INTO Expert_In(email, area_name) VALUES
 ('leo.martinez@institute.edu', 'Software Engineering'),
 ('maria.rodriguez@university.edu', 'Computer Security');
 
--- Add a review for paper 1 that is intentionally inconsistent
+-- Meaningful sample data for the Reviews table to cover all test cases in Part 3.
 INSERT INTO Reviews (email, pid, originality, correctness, fitness) VALUES
-('jane.white@university.edu', 1, 1, 1, 1);
+-- Paper 1: Designed to have inconsistent reviews and result in a 'rejected' status.
+-- Final avg = (4.33 + 4.33 + 1.0) / 3 = 3.22, which is < 3.5.
+('leo.martinez@institute.edu', 1, 4, 5, 4),
+('maria.rodriguez@university.edu', 1, 4, 4, 5),
+('jane.white@university.edu', 1, 1, 1, 1),
 
--- MODIFICATION:
--- Changed the reviewers for paper 1 to avoid the self-review error.
--- John Smith wrote paper 1, so he cannot review it.
--- Let's have Leo and Maria review it instead.
-INSERT INTO Reviews (email, pid, originality, correctness, fitness) VALUES
--- Paper 1 Reviews
-('leo.martinez@institute.edu', 1, 4, 5, 4),   -- Avg: 4.33
-('maria.rodriguez@university.edu', 1, 4, 4, 5), -- Avg: 4.33
-                                                -- Overall avg for paper 1: 4.33 -> accepted
--- Paper 2 Reviews
-('john.smith@university.edu', 2, 5, 5, 5),   -- Only one review, status should be 'undecided'
+-- Paper 2: Designed to have two good reviews and result in an 'accepted' status.
+-- Final avg = (5.0 + 4.0) / 2 = 4.5, which is >= 3.5.
+('john.smith@university.edu', 2, 5, 5, 5),
+('maria.rodriguez@university.edu', 2, 4, 4, 4),
 
--- Paper 3 Reviews
-('jane.white@university.edu', 3, 2, 1, 2),    -- Avg: 1.67
-('john.smith@university.edu', 3, 1, 2, 3);    -- Avg: 2.0
-                                                -- Overall avg for paper 3: 1.83 -> rejected
+-- Paper 3: Designed to have two poor reviews and result in a 'rejected' status.
+-- Final avg = (1.67 + 2.0) / 2 = 1.835, which is < 3.5.
+('jane.white@university.edu', 3, 2, 1, 2),
+('john.smith@university.edu', 3, 1, 2, 3);
+
+-- Papers 4, 5, 6, and 7 are intentionally left without reviews to test the 'undecided' status.
