@@ -183,6 +183,10 @@ INSERT INTO Expert_In(email, area_name) VALUES
 ('leo.martinez@institute.edu', 'Software Engineering'),
 ('maria.rodriguez@university.edu', 'Computer Security');
 
+-- Add a review for paper 1 that is intentionally inconsistent
+INSERT INTO Reviews (email, pid, originality, correctness, fitness) VALUES
+('jane.white@university.edu', 1, 1, 1, 1);
+
 -- MODIFICATION:
 -- Changed the reviewers for paper 1 to avoid the self-review error.
 -- John Smith wrote paper 1, so he cannot review it.
