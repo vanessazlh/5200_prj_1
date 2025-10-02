@@ -60,7 +60,7 @@ CREATE TABLE Reviews (
 );
 
 -- ####################################################################
--- 2. TRIGGERS (These are well-written and can remain)
+-- 2. TRIGGERS 
 -- ####################################################################
 
 CREATE TRIGGER prevent_self_review
