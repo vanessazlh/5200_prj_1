@@ -1,7 +1,8 @@
 SELECT 
     p.area_name AS research_area,
     SUM(CASE WHEN p.acceptance = 'accepted' THEN 1 ELSE 0 END) AS accepted_count,
-    SUM(CASE WHEN p.acceptance = 'rejected' THEN 1 ELSE 0 END) AS rejected_count
+    SUM(CASE WHEN p.acceptance = 'rejected' THEN 1 ELSE 0 END) AS rejected_count,
+    SUM(CASE WHEN p.acceptance = 'undecided' THEN 1 ELSE 0 END) AS undecided_count
 FROM 
     Paper p
 JOIN 
