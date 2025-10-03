@@ -1,4 +1,4 @@
 SELECT area_name, title, avg_score
 FROM Paper
 WHERE acceptance = 'accepted'
-ORDER BY avg_score DESC;
+ORDER BY area_name, avg_score DESC;
